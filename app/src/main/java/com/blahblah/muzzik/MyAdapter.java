@@ -5,10 +5,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.util.List;
+
 import androidx.recyclerview.widget.RecyclerView;
 
 public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
-    private String[] mDataset;
+    private List<MusicData> musicDataList;
     public static class MyViewHolder extends RecyclerView.ViewHolder {
         public TextView textView;
         public MyViewHolder(View v) {
@@ -17,8 +19,8 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         }
     }
 
-    public MyAdapter(String[] myDataset) {
-        mDataset = myDataset;
+    public MyAdapter(List<MusicData> musicDataList) {
+        this.musicDataList = musicDataList;
     }
 
     @Override
@@ -30,12 +32,12 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
 
     @Override
     public void onBindViewHolder(MyViewHolder holder, int position) {
-        holder.textView.setText(mDataset[position]);
+        holder.textView.setText(musicDataList.get(position).getSongTitle());
 
     }
 
     @Override
     public int getItemCount() {
-        return mDataset.length;
+        return musicDataList.size();
     }
 }
