@@ -8,15 +8,32 @@ import android.util.Log;
 
 import java.io.IOException;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 public class MainActivity extends Activity {
 
     Muzzik muzzik = new Muzzik();
     Uri currentSong;
+    private RecyclerView musicRecycler;
+    private RecyclerView.Adapter mAdapter;
+    private RecyclerView.LayoutManager layoutManager;
+    String[] musicData = new String[] {"song 1", "song 2", "song 3"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        musicRecycler = findViewById(R.id.musicList);
+        musicRecycler.hasFixedSize();
+
+        layoutManager = new LinearLayoutManager(this);
+        musicRecycler.setLayoutManager(layoutManager);
+
+        mAdapter = new MyAdapter(musicData);
+        musicRecycler.setAdapter(mAdapter);
+
+
 
         Intent intent = new Intent();
         intent.setAction(Intent.ACTION_GET_CONTENT);
@@ -25,12 +42,18 @@ public class MainActivity extends Activity {
 
     }
 
+
+
+
+
+
+
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         if (requestCode == 1) {
             if (resultCode == RESULT_OK){
                 currentSong = data.getData();
-                Log.e("BLAH", currentSong.toString());
                 try {
                     muzzik.setDataSource(getApplicationContext(), currentSong);
                 } catch (IOException e){
