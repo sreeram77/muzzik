@@ -1,5 +1,7 @@
 package com.blahblah.muzzik;
 
+import android.view.View;
+
 public interface MusicOnClickListener {
-    void onItemClick(MusicData music);
+    void onItemClick(View v, int musicPos);
 }

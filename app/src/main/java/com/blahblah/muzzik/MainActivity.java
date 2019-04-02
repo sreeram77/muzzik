@@ -3,6 +3,7 @@ package com.blahblah.muzzik;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
@@ -10,8 +11,12 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,14 +44,20 @@ public class MainActivity extends Activity {
         musicRecycler = findViewById(R.id.musicList);
         musicRecycler.hasFixedSize();
 
+        getSongList();
+
         layoutManager = new LinearLayoutManager(this);
         musicRecycler.setLayoutManager(layoutManager);
 
-        mAdapter = new MyAdapter(musicDataList);
+        MusicOnClickListener musicOnClickListener = new MusicOnClickListener() {
+            @Override
+            public void onItemClick(View v, int musicPos) {
+                setAndStartSong(musicDataList.get(musicPos).getSongUri());
+            }
+        };
+
+        mAdapter = new MyAdapter(musicOnClickListener, musicDataList);
         musicRecycler.setAdapter(mAdapter);
-
-        getSongList();
-
 
 /*
         Intent intent = new Intent();
@@ -56,27 +67,40 @@ public class MainActivity extends Activity {
 */
     }
 
+    private void setAndStartSong(Uri songUri){
+        Log.e("BBB", songUri.toString());
+        try {
+            muzzik.setDataSource(getApplicationContext(), songUri);
+        } catch (IOException e){
+            Log.e("Error", e.toString());
+        }
+        try {
+            muzzik.prepare();
+        } catch (IOException e){
+            Log.e("Error", e.toString());
+        }
+        muzzik.start();
+    }
+
     private void getSongList(){
 
         if (checkPermissionREAD_EXTERNAL_STORAGE(this)) {
             ContentResolver musicResolver = getContentResolver();
-            Uri musicUri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
             Cursor musicCursor = musicResolver.query(musicUri, null, null, null, null);
 
             if (musicCursor != null && musicCursor.moveToFirst()) {
                 //get columns
-                int titleColumn = musicCursor.getColumnIndex
-                        (android.provider.MediaStore.Audio.Media.TITLE);
-                int idColumn = musicCursor.getColumnIndex
-                        (android.provider.MediaStore.Audio.Media._ID);
-                int artistColumn = musicCursor.getColumnIndex
-                        (android.provider.MediaStore.Audio.Media.ARTIST);
+                int titleColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
+                int idColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media._ID);
+                int artistColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
                 //add songs to list
                 do {
                     long thisId = musicCursor.getLong(idColumn);
                     String thisTitle = musicCursor.getString(titleColumn);
                     String thisArtist = musicCursor.getString(artistColumn);
-                    musicDataList.add(new MusicData(thisId, thisTitle, thisArtist));
+                    Uri uri = ContentUris.withAppendedId(musicUri, musicCursor.getInt(idColumn));
+                    musicDataList.add(new MusicData(uri, thisId, thisTitle, thisArtist));
                 }
                 while (musicCursor.moveToNext());
             }

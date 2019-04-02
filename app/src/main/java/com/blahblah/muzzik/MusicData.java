@@ -1,5 +1,7 @@
 package com.blahblah.muzzik;
 
+import android.net.Uri;
+
 public class MusicData {
 
     public long getSongId() {
@@ -30,7 +32,18 @@ public class MusicData {
     private String songTitle;
     private String songArtist;
 
-    public MusicData(long songId, String songTitle, String songArtist) {
+    public Uri getSongUri() {
+        return songUri;
+    }
+
+    public void setSongUri(Uri songUri) {
+        this.songUri = songUri;
+    }
+
+    private Uri songUri;
+
+    public MusicData(Uri songUri, long songId, String songTitle, String songArtist) {
+        this.songUri = songUri;
         this.songId = songId;
         this.songTitle = songTitle;
         this.songArtist = songArtist;
