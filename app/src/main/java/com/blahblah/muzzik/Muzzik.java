@@ -8,33 +8,50 @@ import android.net.Uri;
 import java.io.IOException;
 
 public class Muzzik extends MediaPlayer {
+
+    public PlayerState getPlayerState() {
+        return playerState;
+    }
+
+    private PlayerState playerState;
+
+    public Muzzik() {
+        this.playerState = PlayerState.PLAYER_IDLE;
+    }
+
     @Override
     public void setDataSource(@androidx.annotation.NonNull Context context, @androidx.annotation.NonNull Uri uri) throws IOException, IllegalArgumentException, IllegalStateException, SecurityException {
+        playerState = PlayerState.PLAYER_INITIALIZED;
         super.setDataSource(context, uri);
     }
 
     @Override
     public void prepare() throws IOException, IllegalStateException {
+        playerState = PlayerState.PLAYER_PREPARED;
         super.prepare();
     }
 
     @Override
     public void prepareAsync() throws IllegalStateException {
+        playerState = PlayerState.PLAYER_PREPARING;
         super.prepareAsync();
     }
 
     @Override
     public void start() throws IllegalStateException {
+        playerState = PlayerState.PLAYER_STARTED;
         super.start();
     }
 
     @Override
     public void stop() throws IllegalStateException {
+        playerState = PlayerState.PLAYER_STOPPED;
         super.stop();
     }
 
     @Override
     public void pause() throws IllegalStateException {
+        playerState = PlayerState.PLAYER_PAUSED;
         super.pause();
     }
 
@@ -66,11 +83,13 @@ public class Muzzik extends MediaPlayer {
 
     @Override
     public void release() {
+        playerState = PlayerState.PLAYER_END;
         super.release();
     }
 
     @Override
     public void reset() {
+        playerState = PlayerState.PLAYER_IDLE;
         super.reset();
     }
 }

@@ -16,6 +16,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.google.android.material.bottomappbar.BottomAppBar;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,19 +57,37 @@ public class MainActivity extends Activity {
             }
         };
 
+        BottomAppBar bar = (BottomAppBar) findViewById(R.id.bottom_app_bar);
+        bar.setNavigationOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                TogglePlayerState();
+            }
+        });
+
         mAdapter = new MyAdapter(musicOnClickListener, musicDataList);
         musicRecycler.setAdapter(mAdapter);
 
     }
 
+    private void TogglePlayerState(){
+        if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED){
+            muzzik.pause();
+        } else if (muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED){
+            muzzik.start();
+        }
+    }
+
     @Override
     protected void onStop() {
         muzzik.release();
+        muzzik = null;
         super.onStop();
     }
 
     private void setAndStartSong(Uri songUri){
-        if (muzzik.isPlaying()){
+        if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED ||
+                muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED){
             muzzik.reset();
         }
         try {
