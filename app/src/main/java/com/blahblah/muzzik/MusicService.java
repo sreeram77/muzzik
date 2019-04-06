@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.IOException;
 
@@ -26,15 +27,15 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+
         try {
-            //An audio file is passed to the service through putExtra();
             songUri = Uri.parse(intent.getExtras().getString("SongUri"));
         } catch (NullPointerException e) {
             stopSelf();
         }
 
         //Request audio focus
-        if (requestAudioFocus() == false) {
+        if (!requestAudioFocus()) {
             //Could not gain focus
             stopSelf();
         }
@@ -44,6 +45,15 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
             setAndStartSong(songUri);
         }
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    public void togglePlayerState(){
+        Toast.makeText(this, muzzik.getPlayerState().toString(), Toast.LENGTH_LONG).show();
+        if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED){
+            muzzik.pause();
+        } else if (muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED) {
+            muzzik.start();
+        }
     }
 
     @Override

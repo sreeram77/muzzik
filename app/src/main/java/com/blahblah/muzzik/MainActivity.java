@@ -88,7 +88,10 @@ public class MainActivity extends Activity {
 
 
     private void TogglePlayerState(){
-
+        if(serviceBound){
+            Toast.makeText(this, "BLAH", Toast.LENGTH_LONG).show();
+            musicService.togglePlayerState();
+        }
     }
 
     @Override
@@ -112,7 +115,6 @@ public class MainActivity extends Activity {
         }
     }
 
-
     private void setAndStartSong(Uri songUri){
         if(!serviceBound){
             Intent intent = new Intent(this, MusicService.class);
@@ -120,7 +122,9 @@ public class MainActivity extends Activity {
             startService(intent);
             bindService(intent, serviceConnection, BIND_AUTO_CREATE);
         } else {
-
+            Intent intent = new Intent(this, MusicService.class);
+            intent.putExtra("SongUri", songUri.toString());
+            startService(intent);
         }
     }
 
