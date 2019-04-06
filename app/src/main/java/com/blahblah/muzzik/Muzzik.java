@@ -39,6 +39,11 @@ public class Muzzik extends MediaPlayer {
     }
 
     @Override
+    public boolean isPlaying() {
+        return super.isPlaying();
+    }
+
+    @Override
     public void seekTo(int msec) throws IllegalStateException {
         super.seekTo(msec);
     }

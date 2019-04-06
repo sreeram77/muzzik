@@ -31,7 +31,6 @@ public class MainActivity extends Activity {
     public static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 123;
 
     Muzzik muzzik = new Muzzik();
-    Uri currentSong;
     private RecyclerView musicRecycler;
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager layoutManager;
@@ -59,24 +58,26 @@ public class MainActivity extends Activity {
         mAdapter = new MyAdapter(musicOnClickListener, musicDataList);
         musicRecycler.setAdapter(mAdapter);
 
-/*
-        Intent intent = new Intent();
-        intent.setAction(Intent.ACTION_GET_CONTENT);
-        intent.setType("audio/*");
-        startActivityForResult(intent,1);
-*/
+    }
+
+    @Override
+    protected void onStop() {
+        muzzik.release();
+        super.onStop();
     }
 
     private void setAndStartSong(Uri songUri){
-        Log.e("BBB", songUri.toString());
-        try {
-            muzzik.setDataSource(getApplicationContext(), songUri);
-        } catch (IOException e){
-            Log.e("Error", e.toString());
+        if (muzzik.isPlaying()){
+            muzzik.reset();
         }
         try {
-            muzzik.prepare();
-        } catch (IOException e){
+            muzzik.setDataSource(getApplicationContext(), songUri);
+        } catch (IOException e) {
+                Log.e("Error", e.toString());
+        }
+        try {
+             muzzik.prepare();
+        } catch (IOException e) {
             Log.e("Error", e.toString());
         }
         muzzik.start();
@@ -169,32 +170,5 @@ public class MainActivity extends Activity {
                 super.onRequestPermissionsResult(requestCode, permissions,
                         grantResults);
         }
-
-
     }
-
-
-
-/*
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data){
-        if (requestCode == 1) {
-            if (resultCode == RESULT_OK){
-                currentSong = data.getData();
-                try {
-                    muzzik.setDataSource(getApplicationContext(), currentSong);
-                } catch (IOException e){
-                    Log.e("Error", e.toString());
-                }
-                try {
-                    muzzik.prepare();
-                } catch (IOException e){
-                    Log.e("Error", e.toString());
-                }
-                muzzik.start();
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data);
-    }
-    */
 }
