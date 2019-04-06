@@ -2,12 +2,16 @@ package com.blahblah.muzzik;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -28,21 +32,18 @@ public class MainActivity extends Activity {
     public static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 123;
     public static final int MY_PERMISSIONS_REQUEST_WAKE_LOCK = 124;
 
-    Muzzik muzzik = new Muzzik();
     private RecyclerView musicRecycler;
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager layoutManager;
     private List<MusicData> musicDataList = new ArrayList<>();
+    private MusicService musicService;
+    boolean serviceBound = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //muzzik.setScreenOnWhilePlaying(true);
-        PermissionHandler wakeLockPermission = new PermissionHandler(Manifest.permission.WAKE_LOCK);
-        if (wakeLockPermission.checkPermission(this)){
-            muzzik.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK);
-        }
+
         musicRecycler = findViewById(R.id.musicList);
         musicRecycler.hasFixedSize();
 
@@ -70,37 +71,57 @@ public class MainActivity extends Activity {
         musicRecycler.setAdapter(mAdapter);
     }
 
-    private void TogglePlayerState(){
-        if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED){
-            muzzik.pause();
-        } else if (muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED){
-            muzzik.start();
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicService.LocalBinder binder = (MusicService.LocalBinder) service;
+            musicService = binder.getService();
+            serviceBound = true;
+            Toast.makeText(MainActivity.this, "Service Bound", Toast.LENGTH_LONG).show();
         }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
+
+
+    private void TogglePlayerState(){
+
     }
 
     @Override
-    protected void onStop() {
-        muzzik.release();
-        muzzik = null;
-        super.onStop();
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putBoolean("ServiceState", serviceBound);
+        super.onSaveInstanceState(savedInstanceState);
     }
 
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        serviceBound = savedInstanceState.getBoolean("ServiceState");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            musicService.stopSelf();
+        }
+    }
+
+
     private void setAndStartSong(Uri songUri){
-        if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED ||
-                muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED){
-            muzzik.reset();
+        if(!serviceBound){
+            Intent intent = new Intent(this, MusicService.class);
+            intent.putExtra("SongUri", songUri.toString());
+            startService(intent);
+            bindService(intent, serviceConnection, BIND_AUTO_CREATE);
+        } else {
+
         }
-        try {
-            muzzik.setDataSource(getApplicationContext(), songUri);
-        } catch (IOException e) {
-                Log.e("Error", e.toString());
-        }
-        try {
-             muzzik.prepare();
-        } catch (IOException e) {
-            Log.e("Error", e.toString());
-        }
-        muzzik.start();
     }
 
     private void getSongList(){
