@@ -12,15 +12,13 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.PowerManager;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +35,7 @@ public class MainActivity extends Activity {
     private RecyclerView.LayoutManager layoutManager;
     private List<MusicData> musicDataList = new ArrayList<>();
     private MusicService musicService;
+    private int currentSongPos = 0;
     boolean serviceBound = false;
 
     @Override
@@ -56,6 +55,7 @@ public class MainActivity extends Activity {
             @Override
             public void onItemClick(View v, int musicPos) {
                 setAndStartSong(musicDataList.get(musicPos).getSongUri());
+                currentSongPos = musicPos;
             }
         };
 
@@ -64,6 +64,22 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 TogglePlayerState();
+            }
+        });
+
+        ImageButton mediaPrev = findViewById(R.id.media_prev);
+        mediaPrev.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MediaSelectPrevious();
+            }
+        });
+
+        ImageButton mediaNext = findViewById(R.id.media_next);
+        mediaNext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MediaSelectNext();
             }
         });
 
@@ -77,7 +93,6 @@ public class MainActivity extends Activity {
             MusicService.LocalBinder binder = (MusicService.LocalBinder) service;
             musicService = binder.getService();
             serviceBound = true;
-            Toast.makeText(MainActivity.this, "Service Bound", Toast.LENGTH_LONG).show();
         }
 
         @Override
@@ -86,10 +101,22 @@ public class MainActivity extends Activity {
         }
     };
 
+    private void MediaSelectPrevious(){
+        if (serviceBound && currentSongPos > 0) {
+            musicService.playPrevious(musicDataList.get(--currentSongPos).getSongUri());
+        } else {
+
+        }
+    }
+
+    private void MediaSelectNext(){
+        if (serviceBound && currentSongPos < musicDataList.size() - 1){
+            musicService.playNext(musicDataList.get(++currentSongPos).getSongUri());
+        }
+    }
 
     private void TogglePlayerState(){
-        if(serviceBound){
-            Toast.makeText(this, "BLAH", Toast.LENGTH_LONG).show();
+        if (serviceBound){
             musicService.togglePlayerState();
         }
     }

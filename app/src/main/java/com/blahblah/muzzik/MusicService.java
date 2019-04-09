@@ -56,6 +56,14 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
         }
     }
 
+    public void playNext(Uri uri){
+        setAndStartSong(uri);
+    }
+
+    public void playPrevious(Uri uri){
+        setAndStartSong(uri);
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();

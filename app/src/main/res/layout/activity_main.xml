@@ -19,7 +19,9 @@
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        tools:layout_editor_absoluteX="70dp"
+        tools:layout_editor_absoluteY="0dp">
 
         <com.google.android.material.bottomappbar.BottomAppBar
             android:id="@+id/bottom_app_bar"
@@ -29,12 +31,32 @@
             app:backgroundTint="@color/colorPrimary"
             app:fabAlignmentMode="center" />
 
+        <ImageButton
+            android:id="@+id/media_prev"
+            android:layout_width="42dp"
+            android:layout_height="44dp"
+            android:layout_gravity="bottom"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_media_previous"
+            app:layout_anchor="@+id/fab_play"
+            app:layout_anchorGravity="left|bottom" />
+
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab_play"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@android:drawable/ic_media_play"
             app:layout_anchor="@id/bottom_app_bar" />
+
+        <ImageButton
+            android:id="@+id/media_next"
+            android:layout_width="42dp"
+            android:layout_height="44dp"
+            android:layout_gravity="bottom|right"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_media_next"
+            app:layout_anchor="@+id/fab_play"
+            app:layout_anchorGravity="bottom|right" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
