@@ -1,19 +1,28 @@
 package com.blahblah.muzzik;
 
+import android.Manifest;
 import android.app.Service;
+import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import androidx.annotation.Nullable;
+
+import static com.blahblah.muzzik.MainActivity.PLAYER_INTENT;
 
 public class MusicService extends Service implements Muzzik.OnCompletionListener,
         Muzzik.OnPreparedListener, Muzzik.OnErrorListener, Muzzik.OnSeekCompleteListener,
@@ -23,13 +32,31 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
     Muzzik muzzik = new Muzzik();
     private AudioManager audioManager;
     private int resumePosition;
-    private Uri songUri;
+    private List<Uri> musicList = new ArrayList<>();
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
+        if (musicList.isEmpty()){
+            getSongList();
+        }
         try {
-            songUri = Uri.parse(intent.getExtras().getString("SongUri"));
+            switch (intent.getAction()){
+                case "playPause" :
+                    togglePlayerState();
+                    break;
+                case "newStart" :
+                    initMuzzikPlayer();
+                    Global.musicPos = intent.getIntExtra(PLAYER_INTENT,0);
+                    setAndStartSong(musicList.get(intent.getIntExtra(PLAYER_INTENT,0)));
+                    break;
+                case "next" :
+                    playNext(++Global.musicPos);
+                    break;
+                case "previous" :
+                    playPrevious(--Global.musicPos);
+                    break;
+            }
+
         } catch (NullPointerException e) {
             stopSelf();
         }
@@ -40,15 +67,10 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
             stopSelf();
         }
 
-        if (songUri != null && !songUri.toString().isEmpty()){
-            initMuzzikPlayer();
-            setAndStartSong(songUri);
-        }
         return super.onStartCommand(intent, flags, startId);
     }
 
     public void togglePlayerState(){
-        Toast.makeText(this, muzzik.getPlayerState().toString(), Toast.LENGTH_LONG).show();
         if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED){
             muzzik.pause();
         } else if (muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED) {
@@ -56,12 +78,15 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
         }
     }
 
-    public void playNext(Uri uri){
-        setAndStartSong(uri);
+    public void playNext(int pos){
+        if (pos <= musicList.size())
+        setAndStartSong(musicList.get(pos));
     }
 
-    public void playPrevious(Uri uri){
-        setAndStartSong(uri);
+    public void playPrevious(int pos){
+        if (pos >= 0) {
+            setAndStartSong(musicList.get(pos));
+        }
     }
 
     @Override
@@ -105,7 +130,9 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
     }
 
     private void stopMedia() {
-        if (muzzik == null) return;
+        if (muzzik == null) {
+            return;
+        }
         if (muzzik.isPlaying()) {
             muzzik.stop();
         }
@@ -228,6 +255,26 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
     public class LocalBinder extends Binder {
         public MusicService getService() {
             return MusicService.this;
+        }
+    }
+
+    private void getSongList(){
+
+        PermissionHandler readExternalStorage = new PermissionHandler(Manifest.permission.READ_EXTERNAL_STORAGE);
+        if (readExternalStorage.checkPermission(this)) {
+            ContentResolver musicResolver = getContentResolver();
+            Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            Cursor musicCursor = musicResolver.query(musicUri, null, null, null, null);
+
+            if (musicCursor != null && musicCursor.moveToFirst()) {
+                //get columns
+                int idColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media._ID);
+                //add songs to list
+                do {
+                    musicList.add(ContentUris.withAppendedId(musicUri, musicCursor.getInt(idColumn)));
+                }
+                while (musicCursor.moveToNext());
+            }
         }
     }
 }

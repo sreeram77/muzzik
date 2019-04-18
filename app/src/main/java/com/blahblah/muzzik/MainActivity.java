@@ -2,6 +2,9 @@ package com.blahblah.muzzik;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -10,6 +13,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.MediaStore;
@@ -22,6 +26,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -29,14 +35,17 @@ public class MainActivity extends Activity {
 
     public static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 123;
     public static final int MY_PERMISSIONS_REQUEST_WAKE_LOCK = 124;
+    public static final int PLAYER_NOTIFICATION = 101;
+    private static final String CHANNEL_ID = "music";
+    public static final String PLAYER_INTENT = "player";
 
     private RecyclerView musicRecycler;
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager layoutManager;
     private List<MusicData> musicDataList = new ArrayList<>();
     private MusicService musicService;
-    private int currentSongPos = 0;
     boolean serviceBound = false;
+    NotificationManagerCompat notificationManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,8 +63,8 @@ public class MainActivity extends Activity {
         MusicOnClickListener musicOnClickListener = new MusicOnClickListener() {
             @Override
             public void onItemClick(View v, int musicPos) {
-                setAndStartSong(musicDataList.get(musicPos).getSongUri());
-                currentSongPos = musicPos;
+                setAndStartSong(musicPos);
+                Global.musicPos = musicPos;
             }
         };
 
@@ -85,6 +94,69 @@ public class MainActivity extends Activity {
 
         mAdapter = new MyAdapter(musicOnClickListener, musicDataList);
         musicRecycler.setAdapter(mAdapter);
+
+        initializeNotification();
+    }
+
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Muzzik player";
+            String description = "Music player";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    private void initializeNotification() {
+        
+        Intent prevIntent = new Intent(MainActivity.this, MusicService.class);
+        prevIntent.setAction("previous");
+        PendingIntent prevPendingIntent = PendingIntent.getService(this, 0, prevIntent, 0);
+
+        Intent nextIntent = new Intent(MainActivity.this, MusicService.class);
+        nextIntent.setAction("next");
+        PendingIntent nextPendingIntent = PendingIntent.getService(this, 0, nextIntent, 0);
+
+        Intent pauseIntent = new Intent(MainActivity.this, MusicService.class);
+        pauseIntent.setAction("playPause");
+        PendingIntent pausePendingIntent = PendingIntent.getService(this, 0, pauseIntent, 0);
+
+        Intent actIntent = new Intent(this, MainActivity.class);
+        PendingIntent actPendingIntent = PendingIntent.getActivity(this, 0, actIntent, 0);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.baseline_menu_white_24)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                // Add media control buttons that invoke intents in your media service
+                .addAction(android.R.drawable.ic_media_previous, "Previous", prevPendingIntent) // #0
+                .addAction(android.R.drawable.ic_media_pause, "Pause", pausePendingIntent)  // #1
+                .addAction(android.R.drawable.ic_media_next, "Next", nextPendingIntent)     // #2
+                // Apply the media style template
+                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                        .setShowActionsInCompactView(1))
+                .setContentTitle(musicDataList.get(Global.musicPos).getSongTitle())
+                .setContentText(musicDataList.get(Global.musicPos).getSongArtist())
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(actPendingIntent)
+                .setOngoing(true);
+
+        createNotificationChannel();
+
+        notificationManager = NotificationManagerCompat.from(this);
+
+        // notificationId is a unique int for each notification that you must define
+        notificationManager.notify(PLAYER_NOTIFICATION, builder.build());
+    }
+
+    private void updateNotification(){
+        notificationManager.notify();
     }
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -102,16 +174,14 @@ public class MainActivity extends Activity {
     };
 
     private void MediaSelectPrevious(){
-        if (serviceBound && currentSongPos > 0) {
-            musicService.playPrevious(musicDataList.get(--currentSongPos).getSongUri());
-        } else {
-
+        if (serviceBound && Global.musicPos > 0) {
+            musicService.playPrevious(--Global.musicPos);
         }
     }
 
     private void MediaSelectNext(){
-        if (serviceBound && currentSongPos < musicDataList.size() - 1){
-            musicService.playNext(musicDataList.get(++currentSongPos).getSongUri());
+        if (serviceBound && Global.musicPos < musicDataList.size() - 1){
+            musicService.playNext(++Global.musicPos);
         }
     }
 
@@ -142,16 +212,13 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void setAndStartSong(Uri songUri){
-        if(!serviceBound){
-            Intent intent = new Intent(this, MusicService.class);
-            intent.putExtra("SongUri", songUri.toString());
-            startService(intent);
+    private void setAndStartSong(int musicPos){
+        Intent intent = new Intent(this, MusicService.class);
+        intent.setAction("newStart");
+        intent.putExtra(PLAYER_INTENT, musicPos);
+        startService(intent);
+        if(!serviceBound) {
             bindService(intent, serviceConnection, BIND_AUTO_CREATE);
-        } else {
-            Intent intent = new Intent(this, MusicService.class);
-            intent.putExtra("SongUri", songUri.toString());
-            startService(intent);
         }
     }
 
