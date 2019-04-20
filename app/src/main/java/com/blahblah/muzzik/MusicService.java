@@ -35,29 +35,42 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
     private List<Uri> musicList = new ArrayList<>();
 
     @Override
+    public void onCreate() {
+        super.onCreate();
+    }
+
+    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+
         if (musicList.isEmpty()){
+
             getSongList();
         }
         try {
+
             switch (intent.getAction()){
+
                 case "playPause" :
+
                     togglePlayerState();
                     break;
                 case "newStart" :
+
                     initMuzzikPlayer();
                     Global.musicPos = intent.getIntExtra(PLAYER_INTENT,0);
                     setAndStartSong(musicList.get(intent.getIntExtra(PLAYER_INTENT,0)));
                     break;
                 case "next" :
+
                     playNext(++Global.musicPos);
                     break;
                 case "previous" :
+
                     playPrevious(--Global.musicPos);
                     break;
             }
-
         } catch (NullPointerException e) {
+
             stopSelf();
         }
 
@@ -66,31 +79,43 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
             //Could not gain focus
             stopSelf();
         }
-
         return super.onStartCommand(intent, flags, startId);
     }
 
     public void togglePlayerState(){
+
         if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED){
+
             muzzik.pause();
         } else if (muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED) {
+
             muzzik.start();
         }
     }
 
     public void playNext(int pos){
+
         if (pos <= musicList.size())
-        setAndStartSong(musicList.get(pos));
+
+            setAndStartSong(musicList.get(pos));
     }
 
     public void playPrevious(int pos){
+
         if (pos >= 0) {
+
             setAndStartSong(musicList.get(pos));
         }
     }
 
+    public boolean isPlayerPlaying(){
+
+        return muzzik.isPlaying();
+    }
+
     @Override
     public void onDestroy() {
+
         super.onDestroy();
         if (muzzik != null) {
             stopMedia();
@@ -100,6 +125,7 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
     }
 
     private void initMuzzikPlayer(){
+
         muzzik.setOnCompletionListener(this);
         muzzik.setOnErrorListener(this);
         muzzik.setOnPreparedListener(this);
@@ -110,13 +136,17 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
     }
 
     private void setAndStartSong(Uri songUri){
+
         if (muzzik.getPlayerState() == PlayerState.PLAYER_STARTED ||
                 muzzik.getPlayerState() == PlayerState.PLAYER_PAUSED){
+
             muzzik.reset();
         }
         try {
+
             muzzik.setDataSource(getApplicationContext(), songUri);
         } catch (IOException e) {
+
             Log.e("Error", e.toString());
         }
         muzzik.prepareAsync();
@@ -124,29 +154,38 @@ public class MusicService extends Service implements Muzzik.OnCompletionListener
     }
 
     private void playMedia() {
+
         if (!muzzik.isPlaying()) {
+
             muzzik.start();
         }
     }
 
     private void stopMedia() {
+
         if (muzzik == null) {
+
             return;
         }
         if (muzzik.isPlaying()) {
+
             muzzik.stop();
         }
     }
 
     private void pauseMedia() {
+
         if (muzzik.isPlaying()) {
+
             muzzik.pause();
             resumePosition = muzzik.getCurrentPosition();
         }
     }
 
     private void resumeMedia() {
+
         if (!muzzik.isPlaying()) {
+
             muzzik.seekTo(resumePosition);
             muzzik.start();
         }

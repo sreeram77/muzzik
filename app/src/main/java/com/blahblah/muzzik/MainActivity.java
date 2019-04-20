@@ -47,20 +47,19 @@ public class MainActivity extends Activity {
     private MusicService musicService;
     boolean serviceBound = false;
     private TextView musicTitle;
-    NotificationManagerCompat notificationManager;
+    private NotificationCompat.Builder builder;
+    private PendingIntent prevPendingIntent, nextPendingIntent, pausePendingIntent, actPendingIntent;
+    private NotificationManagerCompat notificationManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         musicRecycler = findViewById(R.id.musicList);
         musicRecycler.hasFixedSize();
-
         getSongList();
-
         musicTitle = findViewById(R.id.music_title);
-
         layoutManager = new LinearLayoutManager(this);
         musicRecycler.setLayoutManager(layoutManager);
 
@@ -70,6 +69,7 @@ public class MainActivity extends Activity {
                 setAndStartSong(musicPos);
                 Global.musicPos = musicPos;
                 refreshMusicTitle();
+                updateNotification();
             }
         };
 
@@ -77,7 +77,9 @@ public class MainActivity extends Activity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TogglePlayerState();
+
+                togglePlayerState();
+                refreshMusicTitle();
             }
         });
 
@@ -85,6 +87,7 @@ public class MainActivity extends Activity {
         mediaPrev.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 mediaSelectPrevious();
                 refreshMusicTitle();
             }
@@ -94,19 +97,31 @@ public class MainActivity extends Activity {
         mediaNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 mediaSelectNext();
                 refreshMusicTitle();
+                updateNotification();
             }
         });
 
         mAdapter = new MyAdapter(musicOnClickListener, musicDataList);
         musicRecycler.setAdapter(mAdapter);
 
+        initializeNotiComponents();
         initializeNotification();
+        createNotificationChannel();
+        createNotification();
     }
 
     private void refreshMusicTitle(){
+
         musicTitle.setText(musicDataList.get(Global.musicPos).getSongTitle());
+    }
+
+    private void updateNotification(){
+
+        initializeNotification();
+        createNotification();
     }
 
     private void createNotificationChannel() {
@@ -115,7 +130,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = "Muzzik player";
             String description = "Music player";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            int importance = NotificationManager.IMPORTANCE_LOW;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
             channel.setDescription(description);
             // Register the channel with the system; you can't change the importance
@@ -123,32 +138,34 @@ public class MainActivity extends Activity {
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
+
+        notificationManager = NotificationManagerCompat.from(MainActivity.this);
+    }
+
+    private void initializeNotiComponents(){
+
+        Intent prevIntent = new Intent(MainActivity.this, MusicService.class);
+        Intent nextIntent = new Intent(MainActivity.this, MusicService.class);
+        Intent pauseIntent = new Intent(MainActivity.this, MusicService.class);
+        Intent actIntent = new Intent(this, MainActivity.class);
+
+        prevIntent.setAction("previous");
+        prevPendingIntent = PendingIntent.getService(this, 0, prevIntent, 0);
+
+        nextIntent.setAction("next");
+        nextPendingIntent = PendingIntent.getService(this, 0, nextIntent, 0);
+
+        pauseIntent.setAction("playPause");
+        pausePendingIntent = PendingIntent.getService(this, 0, pauseIntent, 0);
+
+        actPendingIntent = PendingIntent.getActivity(this, 0, actIntent, 0);
     }
 
     private void initializeNotification() {
-        
-        Intent prevIntent = new Intent(MainActivity.this, MusicService.class);
-        prevIntent.setAction("previous");
-        PendingIntent prevPendingIntent = PendingIntent.getService(this, 0, prevIntent, 0);
 
-        Intent nextIntent = new Intent(MainActivity.this, MusicService.class);
-        nextIntent.setAction("next");
-        PendingIntent nextPendingIntent = PendingIntent.getService(this, 0, nextIntent, 0);
-
-        Intent pauseIntent = new Intent(MainActivity.this, MusicService.class);
-        pauseIntent.setAction("playPause");
-        PendingIntent pausePendingIntent = PendingIntent.getService(this, 0, pauseIntent, 0);
-
-        Intent actIntent = new Intent(this, MainActivity.class);
-        PendingIntent actPendingIntent = PendingIntent.getActivity(this, 0, actIntent, 0);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.baseline_menu_white_24)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                // Add media control buttons that invoke intents in your media service
-                .addAction(android.R.drawable.ic_media_previous, "Previous", prevPendingIntent) // #0
-                .addAction(android.R.drawable.ic_media_pause, "Pause", pausePendingIntent)  // #1
-                .addAction(android.R.drawable.ic_media_next, "Next", nextPendingIntent)     // #2
                 // Apply the media style template
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setShowActionsInCompactView(1))
@@ -158,21 +175,33 @@ public class MainActivity extends Activity {
                 .setContentIntent(actPendingIntent)
                 .setOngoing(true);
 
-        createNotificationChannel();
+        if (serviceBound){
 
-        notificationManager = NotificationManagerCompat.from(this);
+            if (musicService.isPlayerPlaying()) {
+
+                // Add media control buttons that invoke intents in your media service
+                builder.addAction(android.R.drawable.ic_media_previous, "Previous", prevPendingIntent) // #0
+                        .addAction(android.R.drawable.ic_media_pause, "Pause", pausePendingIntent)  // #1
+                        .addAction(android.R.drawable.ic_media_next, "Next", nextPendingIntent);     // #2
+            }
+        } else {
+
+            builder.addAction(android.R.drawable.ic_media_previous, "Previous", prevPendingIntent) // #0
+                    .addAction(android.R.drawable.ic_media_play, "Play", pausePendingIntent)  // #1
+                    .addAction(android.R.drawable.ic_media_next, "Next", nextPendingIntent);     // #2
+        }
+    }
+
+    private void createNotification() {
 
         // notificationId is a unique int for each notification that you must define
         notificationManager.notify(PLAYER_NOTIFICATION, builder.build());
     }
 
-    private void updateNotification(){
-        notificationManager.notify();
-    }
-
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+
             MusicService.LocalBinder binder = (MusicService.LocalBinder) service;
             musicService = binder.getService();
             serviceBound = true;
@@ -180,24 +209,30 @@ public class MainActivity extends Activity {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+
             serviceBound = false;
         }
     };
 
     private void mediaSelectPrevious(){
+
         if (serviceBound && Global.musicPos > 0) {
+
             musicService.playPrevious(--Global.musicPos);
         }
     }
 
     private void mediaSelectNext(){
         if (serviceBound && Global.musicPos < musicDataList.size() - 1){
+
             musicService.playNext(++Global.musicPos);
         }
     }
 
-    private void TogglePlayerState(){
+    private void togglePlayerState(){
+
         if (serviceBound){
+
             musicService.togglePlayerState();
         }
     }
@@ -210,20 +245,25 @@ public class MainActivity extends Activity {
 
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState) {
+
         super.onRestoreInstanceState(savedInstanceState);
         serviceBound = savedInstanceState.getBoolean("ServiceState");
     }
 
     @Override
     protected void onDestroy() {
+
         super.onDestroy();
         if (serviceBound) {
+
             unbindService(serviceConnection);
             musicService.stopSelf();
         }
+        notificationManager.cancel(PLAYER_NOTIFICATION);
     }
 
     private void setAndStartSong(int musicPos){
+
         Intent intent = new Intent(this, MusicService.class);
         intent.setAction("newStart");
         intent.putExtra(PLAYER_INTENT, musicPos);
@@ -237,6 +277,7 @@ public class MainActivity extends Activity {
 
         PermissionHandler readExternalStorage = new PermissionHandler(Manifest.permission.READ_EXTERNAL_STORAGE);
         if (readExternalStorage.checkPermission(this)) {
+
             ContentResolver musicResolver = getContentResolver();
             Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
             Cursor musicCursor = musicResolver.query(musicUri, null, null, null, null);
@@ -248,6 +289,7 @@ public class MainActivity extends Activity {
                 int artistColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
                 //add songs to list
                 do {
+
                     long thisId = musicCursor.getLong(idColumn);
                     String thisTitle = musicCursor.getString(titleColumn);
                     String thisArtist = musicCursor.getString(artistColumn);
@@ -264,10 +306,13 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode,
                                            String[] permissions, int[] grantResults) {
         switch (requestCode) {
+
             case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE:
+
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // do your stuff
                 } else {
+
                     Toast.makeText(this, "GET_ACCOUNTS Denied",
                             Toast.LENGTH_SHORT).show();
                 }
@@ -276,6 +321,7 @@ public class MainActivity extends Activity {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // do your stuff
                 } else {
+
                     Toast.makeText(this, "Wake Denied",
                             Toast.LENGTH_SHORT).show();
                 }
