@@ -19,6 +19,7 @@ import android.os.IBinder;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -45,6 +46,7 @@ public class MainActivity extends Activity {
     private List<MusicData> musicDataList = new ArrayList<>();
     private MusicService musicService;
     boolean serviceBound = false;
+    private TextView musicTitle;
     NotificationManagerCompat notificationManager;
 
     @Override
@@ -57,6 +59,8 @@ public class MainActivity extends Activity {
 
         getSongList();
 
+        musicTitle = findViewById(R.id.music_title);
+
         layoutManager = new LinearLayoutManager(this);
         musicRecycler.setLayoutManager(layoutManager);
 
@@ -65,6 +69,7 @@ public class MainActivity extends Activity {
             public void onItemClick(View v, int musicPos) {
                 setAndStartSong(musicPos);
                 Global.musicPos = musicPos;
+                refreshMusicTitle();
             }
         };
 
@@ -80,7 +85,8 @@ public class MainActivity extends Activity {
         mediaPrev.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                MediaSelectPrevious();
+                mediaSelectPrevious();
+                refreshMusicTitle();
             }
         });
 
@@ -88,7 +94,8 @@ public class MainActivity extends Activity {
         mediaNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                MediaSelectNext();
+                mediaSelectNext();
+                refreshMusicTitle();
             }
         });
 
@@ -96,6 +103,10 @@ public class MainActivity extends Activity {
         musicRecycler.setAdapter(mAdapter);
 
         initializeNotification();
+    }
+
+    private void refreshMusicTitle(){
+        musicTitle.setText(musicDataList.get(Global.musicPos).getSongTitle());
     }
 
     private void createNotificationChannel() {
@@ -173,13 +184,13 @@ public class MainActivity extends Activity {
         }
     };
 
-    private void MediaSelectPrevious(){
+    private void mediaSelectPrevious(){
         if (serviceBound && Global.musicPos > 0) {
             musicService.playPrevious(--Global.musicPos);
         }
     }
 
-    private void MediaSelectNext(){
+    private void mediaSelectNext(){
         if (serviceBound && Global.musicPos < musicDataList.size() - 1){
             musicService.playNext(++Global.musicPos);
         }
